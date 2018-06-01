@@ -13,10 +13,10 @@
     C2   | [ ]A2      \  N  /      D7[S] |   D7
     C3   | [ ]A3       \_0_/       D6[B]~|   D6
     C4   | [D]A4/SDA               D5[B]~|   D5
-    C5   | [D]A5/SCL               D4[ ] |   D4
+    C5   | [D]A5/SCL               D4[L] |   D4
          | [ ]A6              INT1/D3[ ]~|   D3
          | [ ]A7              INT0/D2[ ] |   D2
-         | [ ]5V                  GND[ ] |     
+         | [ ]5V                  GND[ ] |
     C6   | [ ]RST                 RST[ ] |   C6
          | [ ]GND   5V MOSI GND   TX1[ ] |   D0
          | [ ]Vin   [ ] [ ] [ ]   RX1[ ] |   D1
@@ -24,22 +24,23 @@
          |          MISO SCK RST         |
          | NANO-V3                       |
          +-------------------------------+
-         
+
          http://busyducks.com/ascii-art-arduinos
 */
 
 #include <SoftwareSerial.h>
 
-//melodia do MARIO THEME
-int melodia[] = {660, 660, 660, 510, 660, 770, 380};
+//=========================================
+// [L] Criando variável para o led vermelho
+//=========================================
+int ledVermelho = 4;
 
-//duração de cada nota
-int duracaodasnotas[] = {100, 100, 100, 100, 100, 100, 100};
-
-/* Defini??o de um objeto SoftwareSerial.
-   Usaremos os pinos 5 e 6, como RX e TX, respectivamente.
-   Isto evita o erro do Avrdude
-*/
+//========================================================
+// [B] Bluetooth
+// Definição de um objeto SoftwareSerial.
+// Usaremos os pinos 5 e 6, como RX e TX, respectivamente.
+// Isto evita o erro do Avrdude
+//========================================================
 SoftwareSerial serial(5, 6);
 
 //=============
@@ -54,8 +55,23 @@ int IN2 = 10;
 int IN3 = 9;
 int IN4 = 8;
 
-//Buzzer conectado ao pino 12
+//================================
+// [Z] Buzzer conectado ao pino 12
+//================================
 int buzzer = 12;
+
+//melodia do MARIO THEME
+int melodia[] = {660, 660, 660, 510, 660, 770, 380};
+
+//duração de cada nota
+int duracaodasnotas[] = {100, 100, 100, 100, 100, 100, 100};
+
+#define ledVerCycle 100U
+unsigned long ledVerLastMillis = 0;
+boolean ledVerState = false;
+bool autoMode = false;
+
+unsigned long loopLastMillis = 0;
 
 void setup()
 {
@@ -68,22 +84,42 @@ void setup()
   //Sets the baud for serial data transmission
   serial.begin(9600);
 
-  //Pino 12 do arduino como sa?da
+  //Pino 12 do arduino como saída
   pinMode(buzzer, OUTPUT);
 }
 
 void loop()
 {
-  //Criando uma vari?vel do tipo caracter
+  //Criando uma variável do tipo caracter
   char z;
 
-  //Vari?vel 'z' recebe o valor da porta Serial
+  //Variável 'z' recebe o valor da porta Serial
   z = serial.read();
 
   switch (z)
   {
+    case 'A' : //Se 'A' for recebido, vai para Frente
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
+      serial.print("Autonomous Mode");
+
+      // Define Modo Autônomo
+      autoMode = true;
+
+      break;
+
+    case 'a' : //Se 'a' for recebido, vai para Frente
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
+      serial.print("Manual Mode");
+
+      // Define Modo Autônomo
+      autoMode = false;
+
+      //Play the Buzzer
+      playBuzzer();
+      break;
+
     case 'F' : //Se 'F' for recebido, vai para Frente
-      //Mensagem ser? enviada para o m?dulo HC-06 e da? para o Android.
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
       serial.print("Move Forward");
 
       // Move Forward
@@ -91,8 +127,8 @@ void loop()
 
       break;
 
-    case 'T' : //Se 'T' for recebido, vai para Tr?s
-      //Mensagem ser? enviada para o m?dulo HC-06 e da? para o Android.
+    case 'T' : //Se 'T' for recebido, vai para Trás
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
       serial.print("Move Backward");
 
       //Move Backward
@@ -101,7 +137,7 @@ void loop()
       break;
 
     case 'E' : //Se 'E' for recebido, vira para Esquerda
-      //Mensagem ser? enviada para o m?dulo HC-06 e da? para o Android.
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
       serial.print("Move Left");
 
       //Move Left
@@ -109,8 +145,8 @@ void loop()
 
       break;
 
-    case 'D' : // 'D' for recebido acende led amarelo, vira para Direita
-      //Mensagem ser? enviada para o m?dulo HC-06 e da? para o Android.
+    case 'D' : //Se 'D' for recebido, vira para Direita
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
       serial.print("Move Right");
 
       //Move Right
@@ -118,8 +154,8 @@ void loop()
 
       break;
 
-    case 'P' : //Se 'P' for recebido, P?ra o Movimento
-      //Mensagem ser? enviada para o m?dulo HC-06 e da? para o Android.
+    case 'P' : //Se 'P' for recebido, Pára o Movimento
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
       serial.print("Stop the Move");
 
       //Move Stop
@@ -128,7 +164,7 @@ void loop()
       break;
 
     case 'B' : //Se 'B' for recebido, Toca a Buzina
-      //Mensagem ser? enviada para o m?dulo HC-06 e da? para o Android.
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
       serial.print("Play the Buzzer");
 
       //Play the Buzzer
@@ -136,8 +172,8 @@ void loop()
 
       break;
 
-    case 'M' : //Se 'M' for recebido, Toca a M?sica
-      //Mensagem ser? enviada para o m?dulo HC-06 e da? para o Android.
+    case 'M' : //Se 'M' for recebido, Toca a Música
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
       serial.print("Play the Music");
 
       //Play Super Mario Theme
@@ -145,15 +181,28 @@ void loop()
 
       break;
 
-      //    default : //Se 'P' for recebido, P?ra o Movimento
-      //      //Mensagem ser? enviada para o m?dulo HC-06 e da? para o Android.
-      //      serial.print("Stop the Move");
-      //
-      //      //Move Stop
-      //      moveStop();
+    default : //Se 'P' for recebido, Pára o Movimento
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
+      serial.print("Waiting...");
+
+      //Aguardando comando
+      piscaLed();
   }
 
-  delay(300);
+  //===========
+  // delay(300)
+  //===========
+//  if (autoMode == false)
+//  {
+    delay(300);
+//  }
+//  else
+//  {
+//    if (cycleCheck(&loopLastMillis, 300))
+//    {
+//
+//    }
+//  }
 }
 
 void moveStop()
@@ -204,26 +253,27 @@ void turnLeft()
 void playBuzzer()
 {
   /*
-    o n?mero 12 indica que o pino positivo do buzzer est? na porta 10
-    o n?mero 300 ? a frequ?ncia que ser? tocado
-    o n?mero 300 ? a dura??o do som
+    o número 12 indica que o pino positivo do buzzer está na porta 12
+    o número 300 é a frequência que será tocada
+    o número 300 é a duração do som
   */
   //aqui sai o som
   tone(buzzer, 300, 300);
-  delay(500);
 
   //aqui sai o som
+  delay(500);
   tone(buzzer, 100, 300);
-  delay(500);
 
   //aqui sai o som
+  delay(500);
   tone(buzzer, 900, 300);
+
   delay(500);
 }
 
 void playSuperMarioTheme()
 {
-  //for para tocar as 156 notas come?ando no 0 ate 156 ++ incrementado
+  //for para tocar as 6 primeiras notas começando no 0 até 6 ++ incrementado
   for (int nota = 0; nota < 6; nota++)
   {
     int duracaodanota = duracaodasnotas[nota];
@@ -235,4 +285,25 @@ void playSuperMarioTheme()
   }
 
   noTone(buzzer);
+}
+
+void piscaLed()
+{
+  if (cycleCheck(&ledVerLastMillis, ledVerCycle))
+  {
+    digitalWrite(ledVermelho, ledVerState);
+    ledVerState = !ledVerState;
+  }
+}
+
+boolean cycleCheck(unsigned long *lastMillis, unsigned int cycle)
+{
+  unsigned long currentMillis = millis();
+  if (currentMillis - *lastMillis >= cycle)
+  {
+    *lastMillis = currentMillis;
+    return true;
+  }
+  else
+    return false;
 }

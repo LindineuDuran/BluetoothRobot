@@ -5,12 +5,12 @@
                       +-----+
          +------------| USB |------------+
          |            +-----+            |
-    B5   | [ ]D13/SCK        MISO/D12[ ] |   B4
+    B5   | [ ]D13/SCK        MISO/D12[Z] |   B4
          | [ ]3.3V           MOSI/D11[H]~|   B3
          | [ ]V.ref     ___    SS/D10[H]~|   B2
     C0   | [ ]A0       / N \       D9[H]~|   B1
     C1   | [ ]A1      /  A  \      D8[H] |   B0
-    C2   | [ ]A2      \  N  /      D7[S] |   D7
+    C2   | [ ]A2      \  N  /      D7[ ] |   D7
     C3   | [ ]A3       \_0_/       D6[B]~|   D6
     C4   | [D]A4/SDA               D5[B]~|   D5
     C5   | [D]A5/SCL               D4[L] |   D4
@@ -33,7 +33,7 @@
 //=========================================
 // [L] Criando variável para o led vermelho
 //=========================================
-int ledVermelho = 4;
+int LedEstado = 4;
 
 //========================================================
 // [B] Bluetooth
@@ -66,16 +66,14 @@ int melodia[] = {660, 660, 660, 510, 660, 770, 380};
 //duração de cada nota
 int duracaodasnotas[] = {100, 100, 100, 100, 100, 100, 100};
 
-#define ledVerCycle 100U
-unsigned long ledVerLastMillis = 0;
-boolean ledVerState = false;
-bool autoMode = false;
-
-unsigned long loopLastMillis = 0;
-
 void setup()
 {
-  //Define os pinos como saida
+  //=============================
+  // Pino 4 do arduino como saída
+  //=============================
+  pinMode(LedEstado, OUTPUT);
+
+  //Define os pinos como saída
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
@@ -98,32 +96,15 @@ void loop()
 
   switch (z)
   {
-    case 'A' : //Se 'A' for recebido, vai para Frente
-      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
-      serial.print("Autonomous Mode");
-
-      // Define Modo Autônomo
-      autoMode = true;
-
-      break;
-
-    case 'a' : //Se 'a' for recebido, vai para Frente
-      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
-      serial.print("Manual Mode");
-
-      // Define Modo Autônomo
-      autoMode = false;
-
-      //Play the Buzzer
-      playBuzzer();
-      break;
-
     case 'F' : //Se 'F' for recebido, vai para Frente
       //Mensagem será enviada para o módulo HC-06 e daí para o Android.
       serial.print("Move Forward");
 
       // Move Forward
       moveForward();
+
+      //Acende o LED.
+      digitalWrite(LedEstado, HIGH);
 
       break;
 
@@ -134,6 +115,9 @@ void loop()
       //Move Backward
       moveBackward();
 
+      //Acende o LED.
+      digitalWrite(LedEstado, HIGH);
+
       break;
 
     case 'E' : //Se 'E' for recebido, vira para Esquerda
@@ -142,6 +126,9 @@ void loop()
 
       //Move Left
       turnLeft();
+
+      //Acende o LED.
+      digitalWrite(LedEstado, HIGH);
 
       break;
 
@@ -152,6 +139,9 @@ void loop()
       //Move Right
       turnRight();
 
+      //Acende o LED.
+      digitalWrite(LedEstado, HIGH);
+
       break;
 
     case 'P' : //Se 'P' for recebido, Pára o Movimento
@@ -160,6 +150,9 @@ void loop()
 
       //Move Stop
       moveStop();
+
+      //Apaga o LED.
+      digitalWrite(LedEstado, LOW);
 
       break;
 
@@ -180,29 +173,9 @@ void loop()
       playSuperMarioTheme();
 
       break;
-
-    default : //Se 'P' for recebido, Pára o Movimento
-      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
-      serial.print("Waiting...");
-
-      //Aguardando comando
-      piscaLed();
   }
 
-  //===========
-  // delay(300)
-  //===========
-//  if (autoMode == false)
-//  {
-    delay(300);
-//  }
-//  else
-//  {
-//    if (cycleCheck(&loopLastMillis, 300))
-//    {
-//
-//    }
-//  }
+  delay(300);
 }
 
 void moveStop()
@@ -254,20 +227,19 @@ void playBuzzer()
 {
   /*
     o número 12 indica que o pino positivo do buzzer está na porta 12
-    o número 300 é a frequência que será tocada
+    o número 300 é a frequência que será tocado
     o número 300 é a duração do som
   */
   //aqui sai o som
   tone(buzzer, 300, 300);
+  delay(500);
 
   //aqui sai o som
-  delay(500);
   tone(buzzer, 100, 300);
+  delay(500);
 
   //aqui sai o som
-  delay(500);
   tone(buzzer, 900, 300);
-
   delay(500);
 }
 
@@ -285,25 +257,4 @@ void playSuperMarioTheme()
   }
 
   noTone(buzzer);
-}
-
-void piscaLed()
-{
-  if (cycleCheck(&ledVerLastMillis, ledVerCycle))
-  {
-    digitalWrite(ledVermelho, ledVerState);
-    ledVerState = !ledVerState;
-  }
-}
-
-boolean cycleCheck(unsigned long *lastMillis, unsigned int cycle)
-{
-  unsigned long currentMillis = millis();
-  if (currentMillis - *lastMillis >= cycle)
-  {
-    *lastMillis = currentMillis;
-    return true;
-  }
-  else
-    return false;
 }

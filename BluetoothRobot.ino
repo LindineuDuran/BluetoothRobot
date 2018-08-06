@@ -9,13 +9,13 @@
          | [ ]3.3V           MOSI/D11[H]~|   B3
          | [ ]V.ref     ___    SS/D10[H]~|   B2
     C0   | [ ]A0       / N \       D9[H]~|   B1
-    C1   | [ ]A1      /  A  \      D8[H] |   B0
+    C1   | [ ]A1      /  A  \      D8[L] |   B0
     C2   | [ ]A2      \  N  /      D7[ ] |   D7
     C3   | [ ]A3       \_0_/       D6[B]~|   D6
-    C4   | [D]A4/SDA               D5[B]~|   D5
-    C5   | [D]A5/SCL               D4[L] |   D4
-         | [ ]A6              INT1/D3[ ]~|   D3
-         | [ ]A7              INT0/D2[ ] |   D2
+    C4   | [ ]A4/SDA               D5[B]~|   D5
+    C5   | [ ]A5/SCL               D4[H] |   D4
+         | [ ]A6              INT1/D3[H]~|   D3
+         | [ ]A7              INT0/D2[H] |   D2
          | [ ]5V                  GND[ ] |
     C6   | [ ]RST                 RST[ ] |   C6
          | [ ]GND   5V MOSI GND   TX1[ ] |   D0
@@ -29,11 +29,12 @@
 */
 
 #include <SoftwareSerial.h>
+#include <L298N.h>
 
 //=========================================
 // [L] Criando variável para o led vermelho
 //=========================================
-int LedEstado = 4;
+int LedEstado = 8;
 
 //========================================================
 // [B] Bluetooth
@@ -43,17 +44,25 @@ int LedEstado = 4;
 //========================================================
 SoftwareSerial serial(5, 6);
 
-//=============
+//======================================================
 // [H] H-Bridge
-//=============
-//Definicoes pinos Arduino ligados a entrada da Ponte H
+// Definicoes pinos Arduino ligados a entrada da Ponte H
+//======================================================
 //Motor A
-int IN1 = 11;
-int IN2 = 10;
+#define ENA 11
+#define IN1 9
+#define IN2 10
 
 //Motor B
-int IN3 = 9;
-int IN4 = 8;
+#define ENB 3
+#define IN3 4
+#define IN4 2
+
+//========================
+//create a motor instances
+//========================
+L298N motorA(ENA, IN1, IN2);
+L298N motorB(ENB, IN3, IN4);
 
 //================================
 // [Z] Buzzer conectado ao pino 12
@@ -66,6 +75,14 @@ int melodia[] = {660, 660, 660, 510, 660, 770, 380};
 //duração de cada nota
 int duracaodasnotas[] = {100, 100, 100, 100, 100, 100, 100};
 
+// Generally, you should use "unsigned long" for variables that hold time
+// The value will quickly become too large for an int to store
+unsigned long previousMillis = 0; // will store last time LED was updated
+
+// constants won't change :
+const long interval = 300; // interval at which to blink (milliseconds)
+
+
 void setup()
 {
   //=============================
@@ -73,11 +90,11 @@ void setup()
   //=============================
   pinMode(LedEstado, OUTPUT);
 
-  //Define os pinos como saída
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
-  pinMode(IN3, OUTPUT);
-  pinMode(IN4, OUTPUT);
+  //===============================
+  //Define a velocidade dos motores
+  //===============================
+  motorA.setSpeed(100);
+  motorB.setSpeed(100);
 
   //Sets the baud for serial data transmission
   serial.begin(9600);
@@ -91,8 +108,17 @@ void loop()
   //Criando uma variável do tipo caracter
   char z;
 
-  //Variável 'z' recebe o valor da porta Serial
-  z = serial.read();
+  // Com millis()
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval)
+  {
+    // save the last time you blinked the LED
+    previousMillis = currentMillis;
+
+    //Variável 'z' recebe o valor da porta Serial
+    z = serial.read();
+  }
 
   switch (z)
   {
@@ -174,53 +200,41 @@ void loop()
 
       break;
   }
-
-  delay(300);
 }
 
 void moveStop()
 {
   //Move Stop
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, LOW);
+  motorA.stop();
+  motorB.stop();
 }
 
 void moveForward()
 {
   // Move Forward
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
+  motorA.forward();
+  motorB.forward();
 }
 
 void moveBackward()
 {
   //Move Backward
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
+  motorA.backward();
+  motorB.backward();
 }
 
 void turnRight()
 {
   //Move Right
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
+  motorA.forward();
+  motorB.backward();
 }
 
 void turnLeft()
 {
   //Move Left
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
+  motorA.backward();
+  motorB.forward();
 }
 
 void playBuzzer()

@@ -34,7 +34,7 @@
 //=========================================
 // [L] Criando variável para o led vermelho
 //=========================================
-int LedEstado = 8;
+#define LedEstado 8
 
 //========================================================
 // [B] Bluetooth
@@ -42,7 +42,9 @@ int LedEstado = 8;
 // Usaremos os pinos 5 e 6, como RX e TX, respectivamente.
 // Isto evita o erro do Avrdude
 //========================================================
-SoftwareSerial serial(5, 6);
+#define RX 5
+#define TX 6
+SoftwareSerial serial(RX, TX);
 
 //======================================================
 // [H] H-Bridge
@@ -75,13 +77,14 @@ int melodia[] = {660, 660, 660, 510, 660, 770, 380};
 //duração de cada nota
 int duracaodasnotas[] = {100, 100, 100, 100, 100, 100, 100};
 
-// Generally, you should use "unsigned long" for variables that hold time
-// The value will quickly become too large for an int to store
-unsigned long previousMillis = 0; // will store last time LED was updated
+//pausa depois das notas
+int pausadepoisdasnotas[] = {150, 300, 300, 100, 300, 550, 575};
 
-// constants won't change :
+//constants won't change:
 const long interval = 20; // interval at which to blink (milliseconds)
 
+//variáveis globais:
+int velocidade = 100; //Velocidade dos Motores
 
 void setup()
 {
@@ -93,8 +96,8 @@ void setup()
   //===============================
   //Define a velocidade dos motores
   //===============================
-  motorA.setSpeed(100);
-  motorB.setSpeed(100);
+  motorA.setSpeed(velocidade);
+  motorB.setSpeed(velocidade);
 
   //Sets the baud for serial data transmission
   serial.begin(9600);
@@ -108,17 +111,10 @@ void loop()
   //Criando uma variável do tipo caracter
   char z;
 
-  // Com millis()
-  unsigned long currentMillis = millis();
+  //Variável 'z' recebe o valor da porta Serial
+  z = serial.read();
 
-  if (currentMillis - previousMillis >= interval)
-  {
-    // save the last time you blinked the LED
-    previousMillis = currentMillis;
-
-    //Variável 'z' recebe o valor da porta Serial
-    z = serial.read();
-  }
+  pausa(interval);
 
   switch (z)
   {
@@ -182,13 +178,48 @@ void loop()
 
       break;
 
-    case 'B' : //Se 'B' for recebido, Toca a Buzina
+    case 'V' : //Se 'V' for recebido, Aumenta a Velocidade
       //Mensagem será enviada para o módulo HC-06 e daí para o Android.
-      serial.print("Play the Buzzer");
+      serial.print("Velocidade: ");
+      serial.println(velocidade);
 
       //Play the Buzzer
       playBuzzer();
 
+      //Aumenta a Velocidade
+      velocidade += 10;
+      if (velocidade > 250)
+      {
+        velocidade = 250;
+      }
+
+      //=================================
+      //Redefine a velocidade dos motores
+      //=================================
+      motorA.setSpeed(velocidade); //Para bateria carregada, usar valor = 70
+      motorB.setSpeed(velocidade); //Para bateria carregada, usar valor = 70
+      break;
+
+    case 'v' : //Se 'v' for recebido, Diminui a Velocidade
+      //Mensagem será enviada para o módulo HC-06 e daí para o Android.
+      serial.print("Velocidade: ");
+      serial.println(velocidade);
+
+      //Play the Buzzer
+      playBuzzer();
+
+      //Aumenta a Velocidade
+      velocidade -= 10;
+      if (velocidade < 0)
+      {
+        velocidade = 0;
+      }
+
+      //=================================
+      //Redefine a velocidade dos motores
+      //=================================
+      motorA.setSpeed(velocidade); //Para bateria carregada, usar valor = 70
+      motorB.setSpeed(velocidade); //Para bateria carregada, usar valor = 70
       break;
 
     case 'M' : //Se 'M' for recebido, Toca a Música
@@ -200,6 +231,21 @@ void loop()
 
       break;
   }
+}
+
+void pausa(unsigned int milisegundos)
+{
+  volatile unsigned long compara = 0;
+  volatile int contador = 0;
+  do
+  {
+    if (compara != millis())
+    {
+      contador++;
+      compara = millis();
+    }
+  } while (contador <= milisegundos);
+  return;
 }
 
 void moveStop()
@@ -246,15 +292,15 @@ void playBuzzer()
   */
   //aqui sai o som
   tone(buzzer, 300, 300);
-  delay(500);
+  pausa(500);
 
   //aqui sai o som
   tone(buzzer, 100, 300);
-  delay(500);
+  pausa(500);
 
   //aqui sai o som
   tone(buzzer, 900, 300);
-  delay(500);
+  pausa(500);
 }
 
 void playSuperMarioTheme()
@@ -264,10 +310,7 @@ void playSuperMarioTheme()
   {
     int duracaodanota = duracaodasnotas[nota];
     tone(buzzer, melodia[nota], duracaodanota);
-
-    //pausa depois das notas
-    int pausadepoisdasnotas[] = {150, 300, 300, 100, 300, 550, 575};
-    delay(pausadepoisdasnotas[nota]);
+    pausa(pausadepoisdasnotas[nota]);
   }
 
   noTone(buzzer);
